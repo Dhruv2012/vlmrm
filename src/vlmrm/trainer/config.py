@@ -11,6 +11,7 @@ from pydantic import BaseModel, computed_field, field_validator, model_validator
 
 from vlmrm import util
 from vlmrm.envs.base import RENDER_DIM
+from pathlib import Path
 
 
 class Config(BaseModel):
@@ -62,7 +63,17 @@ class Config(BaseModel):
     @computed_field
     @property
     def run_path(self) -> pathlib.Path:
-        return (self.base_path / self.run_name).resolve()
+        # self.base_path = os.path.join('~/rl2/vlmrm/', self.base_path)
+
+        root_dir = Path('/home/dhruv2012/rl2/vlmrm')
+        # print(self.base_path.anchor)
+        new_path = root_dir / self.base_path.relative_to(self.base_path.anchor)
+        # print('***************', new_path)
+        # self.base_path = new_path
+        # print(self.base_path, type(self.base_path))
+        # print("---------------", (self.base_path / self.run_name).resolve())
+        # return (self.base_path / self.run_name).resolve()
+        return (new_path / self.run_name).resolve()
 
     @computed_field
     @property
@@ -104,6 +115,7 @@ class Config(BaseModel):
 
         if self.is_clip_rewarded:
             assert isinstance(self.reward, CLIPRewardConfig)
+            self.logging.tensorboard_freq = None
             if self.logging.tensorboard_freq is not None:
                 raise ValueError(
                     "When doing CLIP-rewarded training, a tensorboard logging "
@@ -129,6 +141,7 @@ class Config(BaseModel):
                     " batch do be distributed among workers and therefore must be "
                     f"divisible by ({self.rl.n_workers=})"
                 )
+            self.reward.batch_size = 100
             if self.rl.n_envs * self.rl.episode_length % self.reward.batch_size != 0:
                 raise ValueError(
                     f"({self.rl.n_envs=}) * ({self.rl.episode_length=}) must be "
